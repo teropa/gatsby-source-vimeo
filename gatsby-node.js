@@ -1,17 +1,23 @@
-const axios = require('axios');
-const crypto = require('crypto');
+const axios = require("axios");
+const crypto = require("crypto");
 
 const getVideos = async ({
-  url, clientID, clientSecret, userID, searchQuery, transformer,
+  url,
+  authToken,
+  userID,
+  searchQuery,
+  transformer
 }) => {
   try {
-    const _searchQuery = searchQuery && searchQuery !== '' ? `&query=${searchQuery}` : '';
-    const _url = url || `https://api.vimeo.com/users/${userID}/videos?per_page=100${_searchQuery}`;
+    const _searchQuery =
+      searchQuery && searchQuery !== "" ? `&query=${searchQuery}` : "";
+    const _url =
+      url ||
+      `https://api.vimeo.com/users/${userID}/videos?per_page=100${_searchQuery}`;
     const response = await axios.get(_url, {
-      auth: {
-        username: clientID,
-        password: clientSecret,
-      },
+      headers: {
+        Authorization: `bearer ${authToken}`
+      }
     });
 
     let videos = response.data.data;
@@ -21,7 +27,7 @@ const getVideos = async ({
         url: `https://api.vimeo.com${response.data.paging.next}`,
         clientID,
         clientSecret,
-        transformer,
+        transformer
       });
       videos = videos.concat(moreVideos);
     }
@@ -34,30 +40,30 @@ const getVideos = async ({
 
 const digest = resource =>
   crypto
-    .createHash('md5')
+    .createHash("md5")
     .update(JSON.stringify(resource))
-    .digest('hex');
+    .digest("hex");
 
 const parseVideos = (video, transformer) => {
-  const videoID = video.uri.replace('/videos/', '');
+  const videoID = video.uri.replace("/videos/", "");
   const videoThumbnail = video.pictures.uri
     .match(/\/pictures\/\w+/gi)[0]
-    .replace(/\/pictures\//gi, '');
+    .replace(/\/pictures\//gi, "");
   const videoThumbnailUrl = `https://i.vimeocdn.com/video/${videoThumbnail}`;
 
-  const userID = video.uri.replace('/users/', '');
+  const userID = video.uri.replace("/users/", "");
   const userThumbnail = video.user.pictures.uri
     .match(/\/pictures\/\w+/gi)[0]
-    .replace(/\/pictures\//gi, '');
+    .replace(/\/pictures\//gi, "");
   const userThumbnailUrl = `https://i.vimeocdn.com/portrait/${userThumbnail}`;
 
   const videoInfo = {
     id: videoID,
-    parent: '__SOURCE__',
+    parent: "__SOURCE__",
     children: [],
     internal: {
-      type: 'Vimeo____video',
-      contentDigest: digest(video),
+      type: "Vimeo____video",
+      contentDigest: digest(video)
     },
     title: video.name,
     description: video.description,
@@ -69,15 +75,15 @@ const parseVideos = (video, transformer) => {
       small: `${videoThumbnailUrl}_295x166.jpg`,
       medium: `${videoThumbnailUrl}_640x360.jpg`,
       large: `${videoThumbnailUrl}_1280x720.jpg`,
-      hd: `${videoThumbnailUrl}_1920x1080.jpg`,
+      hd: `${videoThumbnailUrl}_1920x1080.jpg`
     },
     user: {
       id: userID,
-      parent: '__SOURCE__',
+      parent: "__SOURCE__",
       children: [],
       internal: {
-        type: 'Vimeo___user',
-        contentDigest: digest(video.user),
+        type: "Vimeo___user",
+        contentDigest: digest(video.user)
       },
       name: video.user.name,
       url: video.user.link,
@@ -85,33 +91,34 @@ const parseVideos = (video, transformer) => {
       thumbnail: {
         small: `${userThumbnailUrl}_72x72.jpg`,
         medium: `${userThumbnailUrl}_144x144.jpg`,
-        large: `${userThumbnailUrl}_288x288.jpg`,
-      },
-    },
+        large: `${userThumbnailUrl}_288x288.jpg`
+      }
+    }
   };
 
-  return transformer && typeof transformer === 'function' ? transformer(videoInfo) : videoInfo;
+  return transformer && typeof transformer === "function"
+    ? transformer(videoInfo)
+    : videoInfo;
 };
 
 exports.sourceNodes = async (
   { boundActionCreators },
-  {
-    clientID, clientSecret, userID, searchQuery, transformer,
-  },
+  { clientID, clientSecret, userID, searchQuery, transformer }
 ) => {
   const { createNode } = boundActionCreators;
 
   try {
     const videos = await getVideos({
-      clientID,
-      clientSecret,
+      authToken,
       userID,
       searchQuery,
-      transformer,
+      transformer
     });
 
-    if (transformer && typeof transformer !== 'function') {
-      console.error('[gatsby-source-vimeo] Key `transformer` should be of type `function`.');
+    if (transformer && typeof transformer !== "function") {
+      console.error(
+        "[gatsby-source-vimeo] Key `transformer` should be of type `function`."
+      );
     }
 
     videos.forEach(video => createNode(parseVideos(video, transformer)));
