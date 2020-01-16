@@ -16,7 +16,7 @@ const getVideos = async ({
       `https://api.vimeo.com/users/${userID}/videos?per_page=100${_searchQuery}`;
     const response = await axios.get(_url, {
       headers: {
-        Authorization: `bearer ${authToken}`
+        Authorization: `Bearer ${authToken}`
       }
     });
 
@@ -25,8 +25,7 @@ const getVideos = async ({
     if (response.data.paging.next) {
       const moreVideos = await getVideos({
         url: `https://api.vimeo.com${response.data.paging.next}`,
-        clientID,
-        clientSecret,
+        authToken,
         transformer
       });
       videos = videos.concat(moreVideos);
@@ -46,10 +45,14 @@ const digest = resource =>
 
 const parseVideos = (video, transformer) => {
   const videoID = video.uri.replace("/videos/", "");
-  const videoThumbnail = video.pictures.uri
-    .match(/\/pictures\/\w+/gi)[0]
-    .replace(/\/pictures\//gi, "");
-  const videoThumbnailUrl = `https://i.vimeocdn.com/video/${videoThumbnail}`;
+
+  let videoThumbnailUrl;
+  if (video.pictures.uri) {
+    const videoThumbnail = video.pictures.uri
+      .match(/\/pictures\/\w+/gi)[0]
+      .replace(/\/pictures\//gi, "");
+    videoThumbnailUrl = `https://i.vimeocdn.com/video/${videoThumbnail}`;
+  }
 
   const userID = video.uri.replace("/users/", "");
   const userThumbnail = video.user.pictures.uri
@@ -71,12 +74,14 @@ const parseVideos = (video, transformer) => {
     url: video.link,
     duration: video.duration,
     iframe: video.embed.html,
-    thumbnail: {
-      small: `${videoThumbnailUrl}_295x166.jpg`,
-      medium: `${videoThumbnailUrl}_640x360.jpg`,
-      large: `${videoThumbnailUrl}_1280x720.jpg`,
-      hd: `${videoThumbnailUrl}_1920x1080.jpg`
-    },
+    thumbnail: videoThumbnailUrl
+      ? {
+          small: `${videoThumbnailUrl}_295x166.jpg`,
+          medium: `${videoThumbnailUrl}_640x360.jpg`,
+          large: `${videoThumbnailUrl}_1280x720.jpg`,
+          hd: `${videoThumbnailUrl}_1920x1080.jpg`
+        }
+      : {},
     user: {
       id: userID,
       parent: "__SOURCE__",
@@ -103,7 +108,7 @@ const parseVideos = (video, transformer) => {
 
 exports.sourceNodes = async (
   { boundActionCreators },
-  { clientID, clientSecret, userID, searchQuery, transformer }
+  { authToken, userID, searchQuery, transformer }
 ) => {
   const { createNode } = boundActionCreators;
 
