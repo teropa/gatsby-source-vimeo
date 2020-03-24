@@ -43,7 +43,7 @@ const digest = resource =>
     .update(JSON.stringify(resource))
     .digest("hex");
 
-const parseVideos = (video, transformer) => {
+const parseVideos = (video, transformer, reporter) => {
   const videoID = video.uri.replace("/videos/", "");
 
   let videoThumbnailUrl;
@@ -55,11 +55,20 @@ const parseVideos = (video, transformer) => {
   }
 
   const userID = video.uri.replace("/users/", "");
-  const userThumbnail = video.user.pictures.uri
-    .match(/\/pictures\/\w+/gi)[0]
-    .replace(/\/pictures\//gi, "");
-  const userThumbnailUrl = `https://i.vimeocdn.com/portrait/${userThumbnail}`;
-
+  let userThumbnail = null;
+  let userThumbnailUrl = null;
+  try {
+    const userThumbnail = video.user.pictures.uri
+      .match(/\/pictures\/\w+/gi)[0]
+      .replace(/\/pictures\//gi, "");
+    const userThumbnailUrl = `https://i.vimeocdn.com/portrait/${userThumbnail}`;
+  } catch(e) {
+    if (e instanceof TypeError) {
+      reporter.warn(`No Vimeo thumbnail for user ${userID}`)
+    } else {
+      throw e;
+    }
+  }
   const videoInfo = {
     id: videoID,
     parent: "__SOURCE__",
@@ -93,11 +102,13 @@ const parseVideos = (video, transformer) => {
       name: video.user.name,
       url: video.user.link,
       bio: video.user.bio,
-      thumbnail: {
-        small: `${userThumbnailUrl}_72x72.jpg`,
-        medium: `${userThumbnailUrl}_144x144.jpg`,
-        large: `${userThumbnailUrl}_288x288.jpg`
-      }
+      thumbnail: userThumbnail
+      ? {
+          small: `${userThumbnailUrl}_72x72.jpg`,
+          medium: `${userThumbnailUrl}_144x144.jpg`,
+          large: `${userThumbnailUrl}_288x288.jpg`
+        } 
+      : {},
     }
   };
 
@@ -107,7 +118,7 @@ const parseVideos = (video, transformer) => {
 };
 
 exports.sourceNodes = async (
-  { boundActionCreators },
+  { boundActionCreators, reporter },
   { authToken, userID, searchQuery, transformer }
 ) => {
   const { createNode } = boundActionCreators;
