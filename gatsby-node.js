@@ -137,7 +137,7 @@ exports.sourceNodes = async (
       );
     }
 
-    videos.forEach(video => createNode(parseVideos(video, transformer)));
+    videos.forEach(video => createNode(parseVideos(video, transformer, reporter)));
   } catch (error) {
     console.error(error);
     process.exit(1);
