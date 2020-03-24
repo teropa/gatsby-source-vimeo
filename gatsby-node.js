@@ -64,7 +64,7 @@ const parseVideos = (video, transformer, reporter) => {
     const userThumbnailUrl = `https://i.vimeocdn.com/portrait/${userThumbnail}`;
   } catch(e) {
     if (e instanceof TypeError) {
-      reporter.warn(`No Vimeo thumbnail for user ${userID}`)
+      reporter.warn(`No user thumbnail available for video ${videoID}`)
     } else {
       throw e;
     }
