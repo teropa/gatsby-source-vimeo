@@ -107,10 +107,10 @@ const parseVideos = (video, transformer) => {
 };
 
 exports.sourceNodes = async (
-  { boundActionCreators },
+  { actions },
   { authToken, userID, searchQuery, transformer }
 ) => {
-  const { createNode } = boundActionCreators;
+  const { createNode } = actions;
 
   try {
     const videos = await getVideos({
